@@ -2,37 +2,6 @@ import pyautogui
 from PIL import Image, ImageGrab
 from time import sleep
 import sys
-import win32.win32api as win32api
-import win32.win32gui as win32gui
-import win32.lib.win32con as win32con
-
-
-def get_cookie_window():
-    """
-    Функция для получения окна для последующих нажатий в фоне
-    """
-    
-    def handle_windows(hwnd, useless_param):
-        """
-        Функция для нахождения нужного окна из списка всех окон
-        """
-        if "cookies - Cookie Clicker" in win32gui.GetWindowText(hwnd):
-            cookie_window.append(hwnd)
-            
-    cookie_window = []
-    # Перебор всех окон и вызов функции handle_windows для каждого
-    win32gui.EnumWindows(handle_windows, None)
-    if cookie_window == []:
-        print("Окно не найдено")
-        sys.exit()
-    return cookie_window[0]
-
-
-def background_click(cookie_window, x, y):
-    
-    lParam = win32api.MAKELONG(x, y)
-    win32gui.SendMessage(cookie_window, win32con.WM_LBUTTONDOWN, win32con.MK_LBUTTON, lParam)
-    win32gui.SendMessage(cookie_window, win32con.WM_LBUTTONUP, None, lParam)
 
 
 def get_cords_cookie_clicker_window(exit_event, pause_bot_event):
@@ -86,10 +55,8 @@ def find_with_scaling(orig_image, orig_image_side_size, scale_range, screenshot_
             img_center_cords = pyautogui.center(img_cords)
             # Поскольку поиск был по скриншоту окошка игры, начальная точка рассчитана от начала окна (не всего экрана)
             # Поэтому плюсуем смещение начальной точки окна к уже полученным данным
-            
-            # img_center_cords_window = (img_center_cords.x + window_region[0], img_center_cords.y + window_region[1])
-            # return img_center_cords_window
-            return img_center_cords
+            img_center_cords_window = (img_center_cords.x + window_region[0], img_center_cords.y + window_region[1])
+            return img_center_cords_window
 
 
 def find_on_screenshot(orig_image_var, window_region, resize_step, my_confidence, exit_event, pause_bot_event, windows_os, min_scale = 0.6, screenshot_image = None):
@@ -111,7 +78,7 @@ def find_on_screenshot(orig_image_var, window_region, resize_step, my_confidence
     
     # Если на вход не подали изображение, на котором искать, делается скриншот окна
     if not screenshot_image:
-        if windows_os and not exit_event.is_set():
+        if windows_os:
             bbox_window = (window_region[0], window_region[1], window_region[0] + window_region[2], window_region[1] + window_region[3])
             screenshot_image = ImageGrab.grab(bbox=bbox_window, all_screens=True)
         else:

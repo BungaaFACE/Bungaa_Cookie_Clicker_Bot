@@ -6,7 +6,7 @@ import keyboard
 
 from PIL import ImageGrab, Image
 from functools import partial
-from Bungaa_utils import get_cords_cookie_clicker_window, find_on_screenshot, get_cords_main_cookie, background_click, get_cookie_window
+from Bungaa_utils import get_cords_cookie_clicker_window, find_on_screenshot, get_cords_main_cookie
 # ImageGrab.grab = partial(ImageGrab.grab, all_screens=True)
 
 
@@ -22,25 +22,17 @@ class Main_Programm():
         Если была найдена точка появления золотой печенюхи, то включается ее сбор
         """
         
-        
         # Поиск координат главной печеньки
         main_cookie_cords = get_cords_main_cookie(main_cookie_filename, window_region, resize_step, my_confidence, main_cookie_min_scale, exit_event, pause_bot_event, self.windows_os)
-        if main_cookie_cords:
-            main_cookie_cords_x, main_cookie_cords_y = main_cookie_cords
-        cookie_window = get_cookie_window()
         
         while True:
             if not (exit_event.is_set() or pause_bot_event.is_set() or golden_cookie_event.is_set()):
                 # Клик по основной печенюхе
-                # pyautogui.click(main_cookie_cords)
-                background_click(cookie_window, main_cookie_cords_x, main_cookie_cords_y)
-                
+                pyautogui.click(main_cookie_cords)
                 
             # Если эвент поиска печенюхи включен, то кликаем по ней
             elif golden_cookie_event.is_set():
-                # pyautogui.click(self.golden_cookie_cords)
-                gold_cookie_cords_x, gold_cookie_cords_y = self.golden_cookie_cords
-                background_click(cookie_window, gold_cookie_cords_x, gold_cookie_cords_y)
+                pyautogui.click(self.golden_cookie_cords)
                 # Чтобы не нажимать несколько раз по одной золотой печенюхе, делаем перерыв 0.5 сек
                 sleep(0.5)
                 # Отключение эвента по сбору золотой печенюхи
@@ -52,9 +44,7 @@ class Main_Programm():
             elif pause_bot_event.is_set():
                 # При выходе из паузы снова ищем МП окна и координаты главной печеньки на случай, если окно было передвинуто/изменен размер окна
                 window_region = self.pause_bot()
-                main_cookie_cords = get_cords_main_cookie(main_cookie_filename, window_region, resize_step, my_confidence, main_cookie_min_scale, exit_event, pause_bot_event, self.windows_os)
-                if main_cookie_cords:
-                    main_cookie_cords_x, main_cookie_cords_y = main_cookie_cords
+                main_cookie_cords = main_cookie_cords = get_cords_main_cookie(main_cookie_filename, window_region, resize_step, my_confidence, main_cookie_min_scale, exit_event, pause_bot_event, self.windows_os)
             sleep(0.00001)
 
 
