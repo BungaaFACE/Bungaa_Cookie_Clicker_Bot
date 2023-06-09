@@ -1,64 +1,59 @@
-import pyautogui
 from time import sleep
 import sys
 import threading
 import keyboard
-
-from PIL import ImageGrab, Image
-from functools import partial
-from Bungaa_utils import get_cords_cookie_clicker_window, find_on_screenshot, get_cords_main_cookie, background_click, get_cookie_window
-# ImageGrab.grab = partial(ImageGrab.grab, all_screens=True)
-
+from Bungaa_utils import    feature_matching, get_cords_main_cookie, background_click, \
+                            get_cookie_window, path_var_to_list, disable_background_freeze_setting
 
 
 
 class Main_Programm():
     
 
-    def start_main_cookie_clicker(self, main_cookie_filename, window_region, resize_step, my_confidence, main_cookie_min_scale):
+    def start_main_cookie_clicker(self, main_cookie_image_list, my_confidence):
         """
         Поиск координат главной печеньки
         Включение автокликера по главной печеньке
         Если была найдена точка появления золотой печенюхи, то включается ее сбор
         """
         
-        
         # Поиск координат главной печеньки
-        main_cookie_cords = get_cords_main_cookie(main_cookie_filename, window_region, resize_step, my_confidence, main_cookie_min_scale, exit_event, pause_bot_event, self.windows_os)
-        if main_cookie_cords:
-            main_cookie_cords_x, main_cookie_cords_y = main_cookie_cords
-        cookie_window = get_cookie_window()
+        main_cookie_cords = get_cords_main_cookie(self.cookie_window, main_cookie_image_list, my_confidence, pause_bot_event)
         
         while True:
+            
             if not (exit_event.is_set() or pause_bot_event.is_set() or golden_cookie_event.is_set()):
                 # Клик по основной печенюхе
                 # pyautogui.click(main_cookie_cords)
-                background_click(cookie_window, main_cookie_cords_x, main_cookie_cords_y)
+                background_click(self.cookie_window, main_cookie_cords[0], main_cookie_cords[1])
                 
                 
             # Если эвент поиска печенюхи включен, то кликаем по ней
             elif golden_cookie_event.is_set():
-                # pyautogui.click(self.golden_cookie_cords)
-                gold_cookie_cords_x, gold_cookie_cords_y = self.golden_cookie_cords
-                background_click(cookie_window, gold_cookie_cords_x, gold_cookie_cords_y)
+                
+                # Клик по печеньке
+                background_click(self.cookie_window, self.golden_cookie_cords[0], self.golden_cookie_cords[1])
                 # Чтобы не нажимать несколько раз по одной золотой печенюхе, делаем перерыв 0.5 сек
                 sleep(0.5)
                 # Отключение эвента по сбору золотой печенюхи
                 golden_cookie_event.clear()
+                
             # При выходе из программы, выходим из цикла
             elif exit_event.is_set():
                 break
+            
             # При выходе из паузы снова ищем МП окна и координаты главной печеньки
             elif pause_bot_event.is_set():
                 # При выходе из паузы снова ищем МП окна и координаты главной печеньки на случай, если окно было передвинуто/изменен размер окна
-                window_region = self.pause_bot()
-                main_cookie_cords = get_cords_main_cookie(main_cookie_filename, window_region, resize_step, my_confidence, main_cookie_min_scale, exit_event, pause_bot_event, self.windows_os)
+                self.pause_bot()
+                main_cookie_cords = get_cords_main_cookie(self.cookie_window, main_cookie_image_list, my_confidence, pause_bot_event)
                 if main_cookie_cords:
                     main_cookie_cords_x, main_cookie_cords_y = main_cookie_cords
+                    
             sleep(0.00001)
 
 
-    def golden_cookie_searcher(self, golden_cookie_filename, window_region, resize_step, my_confidence, enable_search_logs):
+    def click_event_searcher(self, click_event_image_list, my_confidence, enable_search_logs):
         """
         Функция поиска золотых печенюх
         - Определяет, подан список картинок или одна картинка
@@ -67,47 +62,42 @@ class Main_Programm():
         """
         
         # Кол-во найденных печенюх
-        gold_number = 0
+        click_number = 0
         # Кол-во попыток поиска
         search_num = 1
-        # Обработка случая, когда подается несколько картинок для поиска
-        if type(golden_cookie_filename) == list:
-            golden_img_var = []
-            for filename in golden_cookie_filename:
-                golden_img_var.append(Image.open(filename).convert('RGBA'))
-        else:
-            golden_img_var = Image.open(golden_cookie_filename).convert('RGBA')
-        
         
         while True:
             if not (exit_event.is_set() or pause_bot_event.is_set()):
                 # Вывод статистики
                 if enable_search_logs:
-                    print(f"Поиск золота... Попытка №{search_num}. Всего найдено печенюх: {gold_number}")
+                    print(f"Поиск кликательных вещей... Попытка №{search_num}. Всего найдено: {click_number}")
+                    # + к статистике поиска
+                    search_num += 1
+                    
                 # Запуск поиска золотого печенья на скриншоте игры
-                self.golden_cookie_cords = find_on_screenshot(golden_img_var, window_region, resize_step, my_confidence, exit_event, pause_bot_event, self.windows_os)
-                # + к статистике поиска
-                search_num += 1
-            
+                self.golden_cookie_cords = feature_matching(self.cookie_window, click_event_image_list, my_confidence)
+                
                 # Если поиск успешный - запускаем эвент по нажатию
                 if self.golden_cookie_cords:
                     # + к статистике золотых печенек
-                    gold_number += 1
-                    print(f"Золотая вкусняха №{gold_number}!")
+                    click_number += 1
+                    print(f"Нашли нажимашку №{click_number}!")
                     # Активация эвента по сбору
                     golden_cookie_event.set()
                     # Чтобы не искать печеньку, пока не исчезнет старая
-                    sleep(1)
+                    sleep(1.5)
                     
             # При выходе из программы
             elif exit_event.is_set():
                 break
             # При паузе бота
             elif pause_bot_event.is_set():
-                # Получаем новые координаты окна, на случай перемещения/изменения размеров окна
-                window_region = self.pause_bot()
+                # Функция паузы
+                self.pause_bot()
                 # Откладываем запуск поиска золотых печенек, чтобы кликер по главной печеньке запустился
-                sleep(1.5)
+                sleep(1)
+                
+            sleep(2)
                 
     
     def pause_bot(self):
@@ -116,28 +106,27 @@ class Main_Programm():
         """
         
         while True:
-            # При отключении паузы
-            if not pause_bot_event.is_set():
-                # Поиск нового пестоположения окна
-                return get_cords_cookie_clicker_window(exit_event, pause_bot_event)
-            elif exit_event.is_set():
+            # При отключении паузы или выходе
+            if not pause_bot_event.is_set() or exit_event.is_set():
+                # На случай перезапуска игры по время паузы еще раз ищем окно
+                self.cookie_window = get_cookie_window()
                 break
             sleep(0.5) 
             
 
-    def interrupt_programm(self, clicker_thread):
+    def interrupt_programm(self, clicker_thread, pause_button, quit_button):
         """
         Функция проверки нажатия кнопки выхода, завершения потока самой программы, включения паузы бота
         """
         
         while True:
             # Если нажата Q или главный поток остановил работы - выходим
-            if keyboard.is_pressed('q') or not clicker_thread.is_alive():
+            if keyboard.is_pressed(quit_button) or not clicker_thread.is_alive():
                 print("Выключение бота...")
                 exit_event.set()
                 sys.exit()
             # Если нажата P - приостанавливаем или продолжаем работу программы
-            elif keyboard.is_pressed('p'):
+            elif keyboard.is_pressed(pause_button):
                 # Если пауза не стоит, включаем паузу
                 if not pause_bot_event.is_set():
                     pause_bot_event.set()
@@ -156,55 +145,59 @@ class Main_Programm():
     def start_programm(self):
         """
         Запуск основной программы
-        0) Основные параметры для поиска изображений
-        1) Поиск координат окна игры
-        3) Запуск треда по поиску золотой печеньки
-        4) Включение автокликера на по основной печеньке
+        0) Параметры настроек
+        1) Выключение фриза анимаций при окне в бэкграунде
+        2) Конвертирование путей к искомым картинкам в формат list
+        3) Получение окна игры с помощью win32
+        4) Включение основного кликера
+        5) Включение функции для паузы/завершения скрипта
+        6) Включение поиска золотой печеньки
         """
-        
+        # Кнопка паузы
+        pause_button = "ctrl+p"
+        # Кнопка выхода
+        quit_button = "ctrl+q"
         # Название файла главной печеньки для поиска
-        main_cookie_filename = "perfectCookie_cropped.png"
+        main_cookie_image_path = "perfectCookie.png"
         # Название файлов для поиска золотой печеньки
-        # Эксперименты показали, что лучше всего ищутся изображения с шагом поворота в 8* 
-        golden_cookie_filename = ["goldCookie_cropped.png", "goldCookie_cropped_8.png", "goldCookie_cropped_16.png", "goldCookie_cropped_352.png", "goldCookie_cropped_344.png"]
-        # Шаг для проверки масшатибруемых изображений
-        resize_step = 0.05
-        # Нижний порог зума для поиска главной печеньки
-        main_cookie_min_scale = 0.3
-        # Насколько похожа печенька на оригинал (0.1 - 1)
-        # Эксперименты показали, что 0.5 оптимальное значение для поиска золотой печеньки. 
-        my_confidence = 0.5
-        # Включить вывод логов на каждую попытку поиска золотой печеньки
+        event_image_path = ["goldCookie.png", "frostedReindeer.png"]
+        # Значение для feature matching отбора. Означает точность совпадения. (меньшее значение = более точное совпадение)
+        my_confidence = 120
+        # Включить вывод логов на каждую попытку поиска золотой печеньки и etc
         enable_search_logs = True
-        # На windows возможно включить поддержку нескольких мониторов, в другом случае будет работать только на основном мониторе
-        self.windows_os = True
+        
+        # При True скрипт проверяет, включена ли настройка полного фриза анимаций игры,
+        # когда окно полностью прикрыто другим окном
+        disable_background_animation_freeze = True
+        # Путь к папке с игрой
+        game_folder_path = "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Cookie Clicker"
         
         
+        # Отключение полного фриза анимаций
+        if disable_background_animation_freeze:
+            disable_background_freeze_setting(game_folder_path)
         
-        # Поиск местоположения окна cookie_clicker
-        window_region = get_cords_cookie_clicker_window(exit_event, pause_bot_event)
+        # Если путь к искомым объектам задан строчкой, то он преобразовывается в список (для дальнейшего удобства)
+        main_cookie_image_path = path_var_to_list(main_cookie_image_path)
+        event_image_path = path_var_to_list(event_image_path)
+        
+        # Поиск окна cookie_clicker
+        self.cookie_window = get_cookie_window()
         
         # Поток для запуска кликера
-        clicker_thread = threading.Thread(target=self.start_main_cookie_clicker, args=(main_cookie_filename, window_region, resize_step, my_confidence, main_cookie_min_scale))
+        clicker_thread = threading.Thread(target=self.start_main_cookie_clicker, args=(main_cookie_image_path, my_confidence))
         clicker_thread.start()
         
         # Поток для ожидания нажатий выхода/паузы программы
-        interrup_thread = threading.Thread(target=lambda: self.interrupt_programm(clicker_thread))
+        interrup_thread = threading.Thread(target=lambda: self.interrupt_programm(clicker_thread, pause_button, quit_button))
         interrup_thread.start()
         
         sleep(1)
         # Поток для поиска золотой печеньки
-        golden_thread = threading.Thread(target=self.golden_cookie_searcher, args=(golden_cookie_filename, window_region, resize_step, my_confidence, enable_search_logs))
+        golden_thread = threading.Thread(target=self.click_event_searcher, args=(event_image_path, my_confidence, enable_search_logs))
         golden_thread.start()
         
-def get_event_status(event_name):
-    """
-    Функция для передачи статуса эвента в utils
-    """
-    if event_name == "exit":
-        return exit_event.is_set()
-    elif event_name == "pause":
-        return pause_bot_event.is_set()
+        
 
 if __name__ == "__main__":
     
